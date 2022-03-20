@@ -1,0 +1,167 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class PCMovement : MonoBehaviour
+{
+    Vector3 moveVector = Vector3.zero;
+    CharacterController charController;
+    Rigidbody charRigidBody;
+
+    public float moveSpeed = 15;
+    public float rotateSpeed = 500;
+    public float jumpForce = 8;
+
+    public bool isSpinning = false;
+    public bool isRunning = false;
+    public bool isOnGround = true;
+    bool checkMove = false;
+
+    public GameObject trailOne;
+    public GameObject trailTwo;
+
+    public Animator animSelect;
+
+    private Rigidbody playerRB;
+
+    private BoxCollider playerCol;
+
+    public AudioSource playerSpin;
+    //public AudioSource playerisRunning;
+    //public AudioSource playerLanding;
+
+
+    void Start()
+    {
+        //charController = GetComponent<CharacterController>();
+        charRigidBody = GetComponent<Rigidbody>();
+        animSelect = GetComponent<Animator>();
+        playerRB = GetComponent<Rigidbody>();
+        playerCol = GetComponent<BoxCollider>();
+
+        //playerLanding = GetComponent<AudioSource>();
+        playerSpin = GetComponent<AudioSource>();
+        //playerisRunning = GetComponent<AudioSource>();
+
+
+    }
+
+
+    void FixedUpdate()
+    {
+
+        float horizontalInput = Input.GetAxis("Horizontal");
+        float verticalInput = Input.GetAxis("Vertical");
+
+        // Turns on Running animation if there is player input
+        if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.D))
+        {
+            animSelect.SetBool("isNothing", false);
+            animSelect.SetBool("isRunning", true);
+        }
+        else if (playerRB.velocity.magnitude <= 0)
+        {
+            animSelect.SetBool("isJumping", false);
+            animSelect.SetBool("isRunning", false);
+            animSelect.SetBool("isNothing", true);
+            isOnGround = true;
+        }
+
+        
+        // Nerd math to make the player move
+        Vector3 movementDirection = new Vector3(horizontalInput, 0, verticalInput);
+        movementDirection.Normalize();
+
+        transform.Translate(movementDirection * moveSpeed * Time.deltaTime, Space.World);
+
+        if (movementDirection != Vector3.zero)
+        {
+            Quaternion toRotation = Quaternion.LookRotation(movementDirection, Vector3.up);
+
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, toRotation, rotateSpeed * Time.deltaTime);
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            Application.Quit();
+        }
+
+        
+
+    }
+
+    private void Update()
+    {
+        // Player Jump
+        if (Input.GetKeyDown(KeyCode.Space) && (isOnGround == true))
+        {
+            animSelect.SetBool("isNothing", false);
+            animSelect.SetBool("isRunning", false);
+            animSelect.SetBool("isJumping", true);
+            playerRB.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            isOnGround = false;
+        }
+
+        // Player Spin
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            trailOne.SetActive(true);
+            trailTwo.SetActive(true);
+            animSelect.SetBool("isNothing", false);
+            animSelect.SetBool("isRunning", false);
+            animSelect.SetBool("isSpinning", true);
+            StartCoroutine("PostSpinWait");
+        }
+
+    }
+
+    // Reset for Player Jump
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Ground"))
+        {
+            animSelect.SetBool("isJumping", false);
+            //playerLanding.Play();
+            isOnGround = true;
+        }
+        else
+        {
+            animSelect.SetBool("isJumping", true);
+            isOnGround = false;
+        }
+    }
+
+    // Reset SpinAttack Animation
+    public IEnumerator PostSpinWait()
+    {
+        yield return new WaitForSeconds(0f);
+        playerSpin.Play();
+        animSelect.SetBool("isSpinning", false);
+        StartCoroutine("DisableSpinTrail");
+    }
+
+    public IEnumerator DisableSpinTrail()
+    {
+        yield return new WaitForSeconds(1f);
+        trailOne.SetActive(false);
+        trailTwo.SetActive(false);
+    }
+
+    public void StopForFungus()
+    {
+        if (checkMove == false)
+        {
+            moveSpeed = 0;
+            rotateSpeed = 0;
+            jumpForce = 0;
+            checkMove = true;
+        }
+        else if (checkMove == true)
+        {
+            moveSpeed = 15;
+            rotateSpeed = 500;
+            jumpForce = 8;
+            checkMove = false;
+        }
+    }
+}
